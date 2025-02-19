@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Creator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fabric@5.2.4/dist/fabric.min.js"></script>
+    <style>
+        #canvas-container {
+            border: 1px solid #505050;
+            position: relative;
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="container py-3">
+    <h2 class="text-center">Flyer Creator</h2>
+    
+    <div class="row">
+        <div class="col-md-4">
+            <label for="paperSize" class="form-label">Select Paper Size</label>
+            <select id="paperSize" class="form-select">
+                <option value="2490x3510">A4 (8.3 x 11.7 in)</option>
+                <option value="3510x4950">A3 (11.7 x 16.5 in)</option>
+                <option value="4950x7020">A2 (16.5 x 23.4 in)</option>
+                <option value="1050x4600">Business Card (3.5 x 2 in)</option>
+                <option value="1500x2100">Postcard (5 x 7 in)</option>
+            </select>
+            
+            <label class="form-label mt-3">Background Color</label>
+            <input type="color" id="bgColor" class="form-control" value="#ffffff">
+            
+            <label class="form-label mt-3">Add Base Image</label>
+            <input type="file" id="baseImage" class="form-control" accept="image/*">
+            
+            <label class="form-label mt-3">Add Layer Image</label>
+            <input type="file" id="layerImage" class="form-control" accept="image/*">
+            
+            <label class="form-label mt-3">Add Text</label>
+            <input type="text" id="textInput" class="form-control" placeholder="Enter text">
+            <input type="color" id="textColor" class="form-control mt-2" value="#000000">
+            <button id="addText" class="btn btn-primary mt-2">Add Text</button>
+            <button id="removeText" class="btn btn-danger mt-2">Remove Selected Text</button>
+        </div>
+        <div class="col-md-8">
+            <div id="canvas-container">
+                <canvas id="flyerCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // https://fabricjs.com/docs/
+        // utilizing older version to match some examples.
+
+        const canvas = new fabric.Canvas('flyerCanvas');
+        const paperSizeSelect = document.getElementById('paperSize');
+        const bgColorInput = document.getElementById('bgColor');
+
+        function resizeCanvas() {
+            let [width, height] = paperSizeSelect.value.split('x').map(Number);
+            canvas.setWidth(width);
+            canvas.setHeight(height);
+            canvas.setZoom(Math.min(600 / width, 600 / height));
+            canvas.backgroundColor = bgColorInput.value;
+            canvas.renderAll();
+        }
+
+        paperSizeSelect.addEventListener('change', resizeCanvas);
+        bgColorInput.addEventListener('input', function () {
+            canvas.setBackgroundColor(bgColorInput.value, canvas.renderAll.bind(canvas));
+        });
+        resizeCanvas();
+
+        document.getElementById('baseImage').addEventListener('change', function (event) {
+            let reader = new FileReader();
+            reader.onload = function (e) {
+                fabric.Image.fromURL(e.target.result, function (img) {
+                    img.set({ left: 0, top: 0, selectable: false });
+                    canvas.clear();
+                    canvas.add(img);
+                    canvas.sendToBack(img);
+                });
+            };
+            reader.readAsDataURL(event.target.files[0]);
+        });
+
+        document.getElementById('layerImage').addEventListener('change', function (event) {
+            let reader = new FileReader();
+            reader.onload = function (e) {
+                fabric.Image.fromURL(e.target.result, function (img) {
+                    img.set({ left: 50, top: 50, selectable: true, hasControls: true });
+                    canvas.add(img);
+                });
+            };
+            reader.readAsDataURL(event.target.files[0]);
+        });
+
+        document.getElementById('addText').addEventListener('click', function () {
+            let textValue = document.getElementById('textInput').value;
+            let textColor = document.getElementById('textColor').value;
+            if (textValue.trim() !== "") {
+                let text = new fabric.Text(textValue, { left: 100, top: 100, fontSize: 32, fill: textColor });
+                canvas.add(text);
+            }
+        });
+
+        document.getElementById('removeText').addEventListener('click', function () {
+            let activeObject = canvas.getActiveObject();
+            if (activeObject && activeObject.type === 'text') {
+                canvas.remove(activeObject);
+            }
+        });
+
+        // TODO: Not reliable
+        canvas.on('mouse:dblclick', function (event) {
+            let activeObject = canvas.getActiveObject();
+            if (activeObject && activeObject.type === 'text') {
+                let newText = prompt("Edit Text", activeObject.text);
+                if (newText !== null) {
+                    activeObject.set({ text: newText });
+                    canvas.renderAll();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
